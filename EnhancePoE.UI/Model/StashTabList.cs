@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
 using EnhancePoE.UI.Properties;
 
 namespace EnhancePoE.UI.Model
@@ -12,10 +14,10 @@ namespace EnhancePoE.UI.Model
 
         public static void GetStashTabIndices()
         {
-            if (Settings.Default.StashTabIndices != "")
+            if (IoC.Get<ApplicationSettingService>().StashTabQueryIndices != "")
             {
                 var ret = new List<int>();
-                var indices = Settings.Default.StashTabIndices;
+                var indices = IoC.Get<ApplicationSettingService>().StashTabQueryIndices;
                 string[] sep = { "," };
                 var split = indices.Split(sep, StringSplitOptions.None);
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace EnhancePoE.App
 {
@@ -15,6 +16,9 @@ namespace EnhancePoE.App
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
+        [DllImport("Kernel32.dll")]
+        public static extern bool QueryFullProcessImageName([In] IntPtr hProcess, [In] uint dwFlags, [Out] StringBuilder lpExeName, [In, Out] ref uint lpdwSize);
+        
         public static void makeTransparent(IntPtr hwnd)
         {
             // Change the extended window style to include WS_EX_TRANSPARENT

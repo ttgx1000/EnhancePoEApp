@@ -1,92 +1,171 @@
-﻿using EnhancePoE.UI.View;
-using Serilog;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Windows;
+using Caliburn.Micro;
+using EnhancePoE.App.Extensions;
+using EnhancePoE.App.Helpers;
+using EnhancePoE.App.Services;
+using EnhancePoE.UI.Model;
+using EnhancePoE.UI.UserControls;
+using EnhancePoE.UI.View;
+using EnhancePoE.UI.ViewModels;
 
 namespace EnhancePoE.UI
 {
     /// <summary>
     ///     Interaction logic for App.xaml
     /// </summary>
-    public class AppBootstrapper : Application
+    public class AppBootstrapper : BootstrapperBase
     {
-        // TODO: make app single instance
+        #region Fields
+        
+        private SimpleContainer _simpleContainer;
+
+        #endregion
+
+        #region Constructors
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AppBootstrapper"/> class.
+        /// </summary>
         public AppBootstrapper()
         {
-            SetupUnhandledExceptionHandling();
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            Initialize();
         }
 
-        protected override void OnStartup(StartupEventArgs e)
+        #endregion
+
+        #region Methods
+        
+        /// <summary>
+        /// Override to configure the framework and setup your IoC container.
+        /// </summary>
+        protected override void Configure()
         {
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.File("Logs/log.txt", rollingInterval: RollingInterval.Day)
-                .CreateLogger();
+            _simpleContainer = new SimpleContainer();
 
-            Log.Debug("Test");
+            _simpleContainer.PerRequest<ApplicationSettingService>();
+            _simpleContainer.PerRequest<HotkeysManager>();
+            
+            _simpleContainer.PerRequest<ChaosRecipeEnhancerViewModel>();
+            _simpleContainer.PerRequest<DynamicGridControlViewModel>();
+            _simpleContainer.PerRequest<DynamicGridControlQuadViewModel>();
+            _simpleContainer.PerRequest<MainOverlayBase>();
+            _simpleContainer.PerRequest<MainOverlayContentViewModel>();
+            _simpleContainer.PerRequest<MainOverlayContentMinifiedViewModel>();
+            _simpleContainer.PerRequest<MainOverlayOnlyButtonsViewModel>();
 
-            MainWindow = new MainWindow();
-
-            MainWindow.Show();
-
-            base.OnStartup(e);
+            // _simpleContainer.RegisterInstance(typeof(SimpleContainer), null, _simpleContainer);
         }
-
-        private void SetupUnhandledExceptionHandling()
+        
+        /// <summary>
+        /// Override this to provide an IoC specific implementation.
+        /// </summary>
+        /// <param name="service">The service to locate.</param>
+        /// <param name="key">The key to locate.</param>
+        /// <returns>
+        /// The located service.
+        /// </returns>
+        protected override object GetInstance(Type service, string key)
         {
-            // Catch exceptions from all threads in the AppDomain.
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-                ShowUnhandledException(args.ExceptionObject as Exception, "AppDomain.CurrentDomain.UnhandledException",
-                    false);
+            return _simpleContainer.GetInstance(service, key);
+        }
+        
+        /// <summary>
+        /// Override this to provide an IoC specific implementation.
+        /// </summary>
+        /// <param name="service">The service to locate.</param>
+        /// <returns>
+        /// The located services.
+        /// </returns>
+        protected override IEnumerable<object> GetAllInstances(Type service)
+        {
+            return _simpleContainer.GetAllInstances(service);
+        }
+        
+        /// <summary>
+        /// Override this to provide an IoC specific implementation.
+        /// </summary>
+        /// <param name="instance">The instance to perform injection on.</param>
+        protected override void BuildUp(object instance)
+        {
+            _simpleContainer.BuildUp(instance);
+        }
+        
+        /// <summary>
+        /// Override this to add custom behavior to execute after the application starts.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The args.</param>
+        protected override void OnStartup(object sender, System.Windows.StartupEventArgs e)
+        {
+            var settings = _simpleContainer.GetInstance<ApplicationSettingService>();
+            
+            // this._sentry = SentrySdk.Init(Dsn);
+            // SentrySdk.ConfigureScope((c) =>
+            // {
+            //     c.User = new User()
+            //     {
+            //         Id = settings.CREClientId,
+            //     };
+            // });
 
-            // Catch exceptions from each AppDomain that uses a task scheduler for async operations.
-            TaskScheduler.UnobservedTaskException += (sender, args) =>
-                ShowUnhandledException(args.Exception, "TaskScheduler.UnobservedTaskException", false);
-
-            // Catch exceptions from a single specific UI dispatcher thread.
-            Dispatcher.UnhandledException += (sender, args) =>
+            if (RunningInstance() != null)
             {
-                // If we are debugging, let Visual Studio handle the exception and take us to the code that threw it.
-                if (!Debugger.IsAttached)
-                {
-                    args.Handled = true;
-                    ShowUnhandledException(args.Exception, "Dispatcher.UnhandledException", true);
-                }
-            };
-
-
-            // Catch exceptions from the main UI dispatcher thread.
-            // Typically we only need to catch this OR the Dispatcher.UnhandledException.
-            // Handling both can result in the exception getting handled twice.
-            //Application.Current.DispatcherUnhandledException += (sender, args) =>
-            //{
-            //	// If we are debugging, let Visual Studio handle the exception and take us to the code that threw it.
-            //	if (!Debugger.IsAttached)
-            //	{
-            //		args.Handled = true;
-            //		ShowUnhandledException(args.Exception, "Application.Current.DispatcherUnhandledException", true);
-            //	}
-            //};
-        }
-
-        private void ShowUnhandledException(Exception e, string unhandledExceptionType, bool promptUserForShutdown)
-        {
-            var messageBoxTitle = $"Unexpected Error Occurred: {unhandledExceptionType}";
-            var messageBoxMessage = $"The following exception occurred:\n\n{e}";
-            var messageBoxButtons = MessageBoxButton.OK;
-
-            if (promptUserForShutdown)
-            {
-                messageBoxMessage += "\n\n\nPlease report this issue on github or discord :)";
-                messageBoxButtons = MessageBoxButton.OK;
+                System.Windows.MessageBox.Show("Another Instance Is Running");
+                System.Windows.Application.Current.Shutdown();
+                return;
             }
 
-            // Let the user decide if the app should die or not (if applicable).
-            if (MessageBox.Show(messageBoxMessage, messageBoxTitle, messageBoxButtons) == MessageBoxResult.Yes)
-                Current.Shutdown();
+            DisplayRootViewFor<MainWindowView>();
         }
+
+        /// <summary>
+        /// Runnings the instance.
+        /// </summary>
+        /// <returns>The other running instance.</returns>
+        public static Process RunningInstance()
+        {
+            var currentProcess = Process.GetCurrentProcess();
+            var processes = Process.GetProcessesByName(currentProcess.ProcessName);
+
+            try
+            {
+                var currentFilePath = currentProcess.GetMainModuleFileName();
+                foreach (var process in processes)
+                {
+                    if (process.Id != currentProcess.Id)
+                    {
+                        if (process.GetMainModuleFileName() == currentFilePath)
+                        {
+                            return process;
+                        }
+                    }
+                }
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                AdminRequestHelper.RequestAdmin();
+            }
+
+            return null;
+        }
+        
+        /// <summary>
+        /// Handles the UnhandledException event of the CurrentDomain control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="UnhandledExceptionEventArgs"/> instance containing the event data.</param>
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            var exception = e.ExceptionObject as Exception;
+            
+            // Add real logging
+            Console.WriteLine(exception);
+            Console.WriteLine(exception.Message);
+        }
+
+        #endregion
     }
 }

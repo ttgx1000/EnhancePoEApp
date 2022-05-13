@@ -5,6 +5,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
 using EnhancePoE.UI.Model.Utils;
 using EnhancePoE.UI.Properties;
 using Clipboard = System.Windows.Clipboard;
@@ -130,7 +132,7 @@ namespace EnhancePoE.UI.Model
 
         private static string GetFilterName()
         {
-            return Path.GetFileName(Settings.Default.LootFilterLocation).Replace(".filter", "");
+            return Path.GetFileName(IoC.Get<ApplicationSettingService>().LootFilterFileLocation).Replace(".filter", "");
         }
     }
 }

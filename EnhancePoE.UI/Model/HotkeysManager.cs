@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Input;
-using EnhancePoE.UI.Properties;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
+using Action = System.Action;
 
-namespace EnhancePoE.UI
+namespace EnhancePoE.UI.Model
 {
     /// <summary>
     ///     A class for adding/removing global hotkeys to and from your application,
     ///     meaning these hotkeys can be run even if your application isn't focused.
     /// </summary>
-    public static class HotkeysManager
+    public class HotkeysManager
     {
         // Events
 
@@ -20,7 +22,7 @@ namespace EnhancePoE.UI
         // The build in proc ID for telling windows to hook onto the
         // low level keyboard events with the SetWindowsHookEx function
         private const int WH_KEYBOARD_LL = 13;
-        private static readonly LowLevelKeyboardProc LowLevelProc = HookCallback;
+        private readonly LowLevelKeyboardProc LowLevelProc = HookCallback;
 
         // The system hook ID (for storing this application's hook)
         private static IntPtr HookID = IntPtr.Zero;
@@ -37,7 +39,7 @@ namespace EnhancePoE.UI
         //public static ModifierKeys reloadFilterModifier;
         //public static Key reloadFilterKey;
 
-        static HotkeysManager()
+        HotkeysManager()
         {
             Hotkeys = new List<GlobalHotkey>();
             RequiresModifierKey = false;
@@ -71,7 +73,7 @@ namespace EnhancePoE.UI
         /// <summary>
         ///     Hooks/Sets up this application for receiving keydown callbacks
         /// </summary>
-        public static void SetupSystemHook()
+        public void SetupSystemHook()
         {
             HookID = SetHook(LowLevelProc);
             IsHookSetup = true;
@@ -89,7 +91,7 @@ namespace EnhancePoE.UI
         /// <summary>
         ///     Adds a hotkey to the hotkeys list.
         /// </summary>
-        public static void AddHotkey(GlobalHotkey hotkey)
+        public void AddHotkey(GlobalHotkey hotkey)
         {
             Hotkeys.Add(hotkey);
         }
@@ -98,7 +100,7 @@ namespace EnhancePoE.UI
         ///     Removes a hotkey from the hotkeys list.
         /// </summary>
         /// <param name="hotkey"></param>
-        public static void RemoveHotkey(GlobalHotkey hotkey)
+        public void RemoveHotkey(GlobalHotkey hotkey)
         {
             Hotkeys.Remove(hotkey);
         }
@@ -140,7 +142,7 @@ namespace EnhancePoE.UI
         /// <param name="key"></param>
         /// <param name="callbackMethod">If this is not null, the callback method will be checked</param>
         /// <returns></returns>
-        public static List<GlobalHotkey> FindHotkeys(ModifierKeys modifier, Key key)
+        public List<GlobalHotkey> FindHotkeys(ModifierKeys modifier, Key key)
         {
             var hotkeys = new List<GlobalHotkey>();
             foreach (var hotkey in Hotkeys)
@@ -157,7 +159,7 @@ namespace EnhancePoE.UI
         /// <param name="key"></param>
         /// <param name="callbackMethod"></param>
         /// <param name="canExecute"></param>
-        public static void AddHotkey(ModifierKeys modifier, Key key, Action callbackMethod, bool canExecute = true)
+        public void AddHotkey(ModifierKeys modifier, Key key, Action callbackMethod, bool canExecute = true)
         {
             AddHotkey(new GlobalHotkey(modifier, key, callbackMethod, canExecute));
         }
@@ -173,7 +175,7 @@ namespace EnhancePoE.UI
         ///     If this is false, the first found hotkey will be removed.
         ///     else, every occourance will be removed.
         /// </param>
-        public static void RemoveHotkey(ModifierKeys modifier, Key key, bool removeAllOccourances = false)
+        public void RemoveHotkey(ModifierKeys modifier, Key key, bool removeAllOccourances = false)
         {
             var originalHotkeys = Hotkeys;
             var toBeRemoved = FindHotkeys(modifier, key);
@@ -198,7 +200,7 @@ namespace EnhancePoE.UI
         /// </summary>
         /// <param name="proc">The callback method to be called when a key up/down occours</param>
         /// <returns></returns>
-        private static IntPtr SetHook(LowLevelKeyboardProc proc)
+        private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
             using (var curProcess = Process.GetCurrentProcess())
             {
@@ -232,11 +234,11 @@ namespace EnhancePoE.UI
             return CallNextHookEx(HookID, nCode, wParam, lParam);
         }
 
-        public static void GetRefreshHotkey()
+        public void GetRefreshHotkey()
         {
-            if (Settings.Default.HotkeyRefresh != "< not set >")
+            if (IoC.Get<ApplicationSettingService>().HotkeyRefresh != "< not set >")
             {
-                var refreshString = Settings.Default.HotkeyRefresh.Split('+');
+                var refreshString = IoC.Get<ApplicationSettingService>().HotkeyRefresh.Split('+');
 
                 if (refreshString.Length > 1)
                 {
@@ -262,11 +264,11 @@ namespace EnhancePoE.UI
         }
 
 
-        public static void GetToggleHotkey()
+        public void GetToggleHotkey()
         {
-            if (Settings.Default.HotkeyToggle != "< not set >")
+            if (IoC.Get<ApplicationSettingService>().HotkeyToggle != "< not set >")
             {
-                var toggleString = Settings.Default.HotkeyToggle.Split('+');
+                var toggleString = IoC.Get<ApplicationSettingService>().HotkeyToggle.Split('+');
 
                 if (toggleString.Length > 1)
                 {
@@ -291,11 +293,11 @@ namespace EnhancePoE.UI
             }
         }
 
-        public static void GetStashTabHotkey()
+        public void GetStashTabHotkey()
         {
-            if (Settings.Default.HotkeyStashTab != "< not set >")
+            if (IoC.Get<ApplicationSettingService>().HotkeyStashTab != "< not set >")
             {
-                var stashTabString = Settings.Default.HotkeyStashTab.Split('+');
+                var stashTabString = IoC.Get<ApplicationSettingService>().HotkeyStashTab.Split('+');
 
                 if (stashTabString.Length > 1)
                 {
@@ -320,69 +322,24 @@ namespace EnhancePoE.UI
             }
         }
 
-        //public static void GetReloadFilterHotkey()
-        //{
-        //    if (Properties.Settings.Default.HotkeyReloadFilter != "< not set >")
-        //    {
-        //        string[] reloadFilterString = Properties.Settings.Default.HotkeyReloadFilter.Split('+');
-
-        //        if (reloadFilterString.Length > 1)
-        //        {
-        //            if (reloadFilterString[0].Trim() == "Ctrl")
-        //            {
-        //                reloadFilterModifier = ModifierKeys.Control;
-        //            }
-        //            else if (reloadFilterString[0].Trim() == "Alt")
-        //            {
-        //                reloadFilterModifier = ModifierKeys.Alt;
-        //            }
-        //            else if (reloadFilterString[0].Trim() == "Win")
-        //            {
-        //                reloadFilterModifier = ModifierKeys.Windows;
-        //            }
-        //            else if (reloadFilterString[0].Trim() == "Shift")
-        //            {
-        //                reloadFilterModifier = ModifierKeys.Shift;
-        //            }
-        //            else
-        //            {
-        //                reloadFilterModifier = ModifierKeys.None;
-        //            }
-
-        //            Enum.TryParse(reloadFilterString[1].Trim(), out reloadFilterKey);
-        //        }
-        //        else
-        //        {
-        //            Enum.TryParse(reloadFilterString[0].Trim(), out reloadFilterKey);
-        //            reloadFilterModifier = ModifierKeys.None;
-        //        }
-        //    }
-        //}
-
-        public static void RemoveToggleHotkey()
+        public void RemoveToggleHotkey()
         {
             RemoveHotkey(toggleModifier, toggleKey);
         }
 
-        public static void RemoveStashTabHotkey()
+        public void RemoveStashTabHotkey()
         {
             RemoveHotkey(stashTabModifier, stashTabKey);
         }
 
-        public static void RemoveRefreshHotkey()
+        public void RemoveRefreshHotkey()
         {
             RemoveHotkey(refreshModifier, refreshKey);
         }
 
         // Callbacks
-
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-        //public static void RemoveReloadFilterHotkey()
-        //{
-        //    HotkeysManager.RemoveHotkey(reloadFilterModifier, reloadFilterKey);
-        //}
-
+        
         #region Native Methods
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]

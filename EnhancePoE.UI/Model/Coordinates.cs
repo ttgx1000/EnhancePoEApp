@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using EnhancePoE.UI.UserControls;
 using EnhancePoE.UI.View;
+using EnhancePoE.UI.ViewModels;
 
 namespace EnhancePoE.UI.Model
 {
@@ -129,9 +129,9 @@ namespace EnhancePoE.UI.Model
 
         private static void OverlayClickEvent()
         {
-            if (MainWindow.StashTabOverlay.IsOpen)
+            if (StashTabOverlayView.Instance.IsOpen)
             {
-                var selectedIndex = MainWindow.StashTabOverlay.StashTabOverlayTabControl.SelectedIndex;
+                var selectedIndex = StashTabOverlayView.Instance.StashTabOverlayTabControl.SelectedIndex;
                 var isHit = false;
                 var hitIndex = -1;
 
@@ -139,11 +139,11 @@ namespace EnhancePoE.UI.Model
 
                 var buttonList = new List<ButtonAndCell>();
 
-                if (CheckForEditButtonHit(MainWindow.StashTabOverlay.EditModeButton)) MainWindow.StashTabOverlay.HandleEditButton();
+                if (CheckForEditButtonHit(StashTabOverlayView.Instance.EditModeButton)) StashTabOverlayView.Instance.HandleEditButton();
 
                 if (StashTabList.StashTabs[selectedIndex].Quad)
                 {
-                    var ctrl = MainWindow.StashTabOverlay.StashTabOverlayTabControl.SelectedContent as DynamicGridControlQuad;
+                    var ctrl = StashTabOverlayView.Instance.StashTabOverlayTabControl.SelectedContent as DynamicGridControlQuadViewModel;
 
                     foreach (var cell in activeCells)
                         buttonList.Add(new ButtonAndCell
@@ -163,11 +163,11 @@ namespace EnhancePoE.UI.Model
 
                     for (var stash = 0; stash < StashTabList.StashTabs.Count; stash++)
                         if (CheckForHeaderHit(StashTabList.StashTabs[stash]))
-                            MainWindow.StashTabOverlay.StashTabOverlayTabControl.SelectedIndex = stash;
+                            StashTabOverlayView.Instance.StashTabOverlayTabControl.SelectedIndex = stash;
                 }
                 else
                 {
-                    var ctrl = MainWindow.StashTabOverlay.StashTabOverlayTabControl.SelectedContent as DynamicGridControl;
+                    var ctrl = StashTabOverlayView.Instance.StashTabOverlayTabControl.SelectedContent as DynamicGridControlViewModel;
                     foreach (var cell in activeCells)
                         buttonList.Add(new ButtonAndCell
                         {
@@ -186,7 +186,7 @@ namespace EnhancePoE.UI.Model
 
                     for (var stash = 0; stash < StashTabList.StashTabs.Count; stash++)
                         if (CheckForHeaderHit(StashTabList.StashTabs[stash]))
-                            MainWindow.StashTabOverlay.StashTabOverlayTabControl.SelectedIndex = stash;
+                            StashTabOverlayView.Instance.StashTabOverlayTabControl.SelectedIndex = stash;
                 }
             }
         }

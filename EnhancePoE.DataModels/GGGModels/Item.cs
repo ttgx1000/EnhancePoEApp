@@ -7,7 +7,7 @@ namespace EnhancePoE.DataModels.GGGModels
     /// TODO
     /// </summary>
     /// <seealso cref="https://www.pathofexile.com/developer/docs/reference#type-Item"/>
-    public partial class Item
+    public class Item
     {
 
         [JsonPropertyName("w")]

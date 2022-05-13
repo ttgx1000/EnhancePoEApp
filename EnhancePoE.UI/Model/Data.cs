@@ -5,9 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using EnhancePoE.UI.Filter;
-using EnhancePoE.UI.Properties;
+using Caliburn.Micro;
+using EnhancePoE.App.Filter;
+using EnhancePoE.App.Services;
+using EnhancePoE.DataModels.CREModels;
 using EnhancePoE.UI.View;
+using EnhancePoE.UI.ViewModels;
 
 namespace EnhancePoE.UI.Model
 {
@@ -28,13 +31,13 @@ namespace EnhancePoE.UI.Model
         public static ItemSet ItemSetRedeemer { get; set; }
         public static ItemSet ItemSetHunter { get; set; }
         public static CancellationTokenSource cs { get; set; } = new CancellationTokenSource();
-        public static CancellationToken CancelationToken { get; set; } = cs.Token;
+        public static CancellationToken CancellationToken { get; set; } = cs.Token;
 
         public static void GetSetTargetAmount(StashTab stash)
         {
-            if (Settings.Default.Sets > 0)
+            if (IoC.Get<ApplicationSettingService>().SetsThreshold > 0)
             {
-                SetTargetAmount = Settings.Default.Sets;
+                SetTargetAmount = IoC.Get<ApplicationSettingService>().SetsThreshold;
             }
             else
             {
@@ -62,7 +65,7 @@ namespace EnhancePoE.UI.Model
 
             ItemSetList = ret;
             Trace.WriteLine(ItemSetList.Count, "item set list count");
-            if (Settings.Default.ExaltedRecipe) GenerateInfluencedItemSets();
+            if (IoC.Get<ApplicationSettingService>().ExaltRecipe) GenerateInfluencedItemSets();
         }
 
 
@@ -134,12 +137,12 @@ namespace EnhancePoE.UI.Model
                 while (i.EmptyItemSlots.Count > 0 && lastEmptySlots != i.EmptyItemSlots.Count)
                 {
                     lastEmptySlots = i.EmptyItemSlots.Count;
-                    if (i.SetCanProduceChaos == false && !Settings.Default.RegalRecipe)
+                    if (i.SetCanProduceChaos == false && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                         if (AddItemToItemSet(i, true))
                             continue;
 
                     if (!AddItemToItemSet(i))
-                        if (Settings.Default.FillWithChaos && !Settings.Default.RegalRecipe)
+                        if (IoC.Get<ApplicationSettingService>().DoNotPreserveLowItemLevelGear && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                             AddItemToItemSet(i, true);
                 }
 
@@ -149,7 +152,7 @@ namespace EnhancePoE.UI.Model
                  * 2.) We obtained a full set without a chaos item -> We aren't lacking a regal item in this set but we don't have enough chaos items. 
                  * 3.) We couldn't obtain a full set. That means that at least one item slot is missing. We need to check which of the remaining slots we can still fill. We could still be missing a chaos item.
                  */
-                if (i.EmptyItemSlots.Count == 0 && (i.SetCanProduceChaos || Settings.Default.RegalRecipe))
+                if (i.EmptyItemSlots.Count == 0 && (i.SetCanProduceChaos || IoC.Get<ApplicationSettingService>().RegalRecipe))
                     // Set full, continue
                     continue;
 
@@ -159,13 +162,13 @@ namespace EnhancePoE.UI.Model
                     while (i.EmptyItemSlots.Count > 0 && i.EmptyItemSlots.Count != lastEmptySlots)
                     {
                         lastEmptySlots = i.EmptyItemSlots.Count;
-                        if (!i.SetCanProduceChaos && !Settings.Default.RegalRecipe)
+                        if (!i.SetCanProduceChaos && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                             if (AddItemToItemSet(i, true, false))
                                 continue;
 
                         if (!AddItemToItemSet(i, false, false))
                             // couldn't add a regal item. Try chaos item if filling with chaos is allowed
-                            if (Settings.Default.FillWithChaos && !Settings.Default.RegalRecipe)
+                            if (IoC.Get<ApplicationSettingService>().DoNotPreserveLowItemLevelGear && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                                 AddItemToItemSet(i, true, false);
                     }
                     // At this point the set will contain a chaos item as long as we had at least one left. If not we didn't have any chaos items left.
@@ -175,7 +178,7 @@ namespace EnhancePoE.UI.Model
                 }
             }
 
-            if (Settings.Default.ExaltedRecipe) FillItemSetsInfluenced();
+            if (IoC.Get<ApplicationSettingService>().ExaltRecipe) FillItemSetsInfluenced();
         }
 
         private static void FillItemSetsInfluenced()
@@ -232,21 +235,21 @@ namespace EnhancePoE.UI.Model
             {
                 if (ApiAdapter.FetchError)
                 {
-                    MainWindow.Overlay.WarningMessage = "Fetching Error...";
-                    MainWindow.Overlay.ShadowOpacity = 1;
-                    MainWindow.Overlay.WarningMessageVisibility = Visibility.Visible;
+                    MainOverlayBase.Instance.WarningMessage = "Fetching Error...";
+                    MainOverlayBase.Instance.ShadowOpacity = 1;
+                    MainOverlayBase.Instance.WarningMessageVisibility = Visibility.Visible;
                     return;
                 }
 
                 if (StashTabList.StashTabs.Count == 0)
                 {
-                    MainWindow.Overlay.WarningMessage = "No Stashtabs found...";
-                    MainWindow.Overlay.ShadowOpacity = 1;
-                    MainWindow.Overlay.WarningMessageVisibility = Visibility.Visible;
+                    MainOverlayBase.Instance.WarningMessage = "No Stashtabs found...";
+                    MainOverlayBase.Instance.ShadowOpacity = 1;
+                    MainOverlayBase.Instance.WarningMessageVisibility = Visibility.Visible;
                     return;
                 }
 
-                if (Settings.Default.Sound)
+                if (IoC.Get<ApplicationSettingService>().Sound)
                 {
                     PreviousActiveItems = new ActiveItemTypes(ActiveItems);
                 }
@@ -262,7 +265,7 @@ namespace EnhancePoE.UI.Model
                     }
                 }
 
-                if (Settings.Default.ShowItemAmount != 0)
+                if (IoC.Get<ApplicationSettingService>().MainOverlayItemAmountDisplayMode != 0)
                 {
                     Trace.WriteLine("Calculating Items");
                     CalculateItemAmounts();
@@ -286,9 +289,9 @@ namespace EnhancePoE.UI.Model
                         // never true cause fullsets < settargetamount when missingChaos @ikogan
                         fullSets++;
 
-                        if (!set.SetCanProduceChaos && !Settings.Default.RegalRecipe) missingGearPieceForChaosRecipe = true;
+                        if (!set.SetCanProduceChaos && !IoC.Get<ApplicationSettingService>().RegalRecipe) missingGearPieceForChaosRecipe = true;
 
-                        //if (set.HasChaos || Properties.Settings.Default.RegalRecipe)
+                        //if (set.HasChaos || Properties.IoC.Get<ApplicationSettingService>().RegalRecipe)
                         //{
                         //    fullSets++;
                         //}
@@ -303,22 +306,23 @@ namespace EnhancePoE.UI.Model
                         foreach (var itemClass in set.EmptyItemSlots) missingItemClasses.Add(itemClass);
                     }
                 }
-                CFilterGenerationManager filterManager = new CFilterGenerationManager();
-                ActiveItems = await filterManager.GenerateSectionsAndUpdateFilterAsync(missingItemClasses);
+                
+                FilterGenerationService filterGenerationService = new FilterGenerationService(IoC.Get<ApplicationSettingService>());
+                ActiveItems = await filterGenerationService.GenerateSectionsAndUpdateFilterAsync(missingItemClasses);
 
                 //Trace.WriteLine(fullSets, "full sets");
-                MainWindow.Overlay.Dispatcher.Invoke(() => { MainWindow.Overlay.FullSetsText = fullSets.ToString(); });
+                MainWindowView.Overlay.Dispatcher.Invoke(() => { MainOverlayBase.Instance.FullSetsText = fullSets.ToString(); });
 
                 // invoke chaos missing
-                if (missingGearPieceForChaosRecipe && !Settings.Default.RegalRecipe)
+                if (missingGearPieceForChaosRecipe && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                 {
-                    MainWindow.Overlay.WarningMessage = "Need lower level items!";
-                    MainWindow.Overlay.ShadowOpacity = 1;
-                    MainWindow.Overlay.WarningMessageVisibility = Visibility.Visible;
+                    MainOverlayBase.Instance.WarningMessage = "Need lower level items!";
+                    MainOverlayBase.Instance.ShadowOpacity = 1;
+                    MainOverlayBase.Instance.WarningMessageVisibility = Visibility.Visible;
                 }
 
                 // invoke exalted recipe ready
-                if (Settings.Default.ExaltedRecipe)
+                if (IoC.Get<ApplicationSettingService>().ExaltRecipe)
                     if (ItemSetShaper.EmptyItemSlots.Count == 0
                         || ItemSetElder.EmptyItemSlots.Count == 0
                         || ItemSetCrusader.EmptyItemSlots.Count == 0
@@ -326,23 +330,23 @@ namespace EnhancePoE.UI.Model
                         || ItemSetHunter.EmptyItemSlots.Count == 0
                         || ItemSetRedeemer.EmptyItemSlots.Count == 0)
                     {
-                        MainWindow.Overlay.WarningMessage = "Exalted Recipe ready!";
-                        MainWindow.Overlay.ShadowOpacity = 1;
-                        MainWindow.Overlay.WarningMessageVisibility = Visibility.Visible;
+                        MainOverlayBase.Instance.WarningMessage = "Exalted Recipe ready!";
+                        MainOverlayBase.Instance.ShadowOpacity = 1;
+                        MainOverlayBase.Instance.WarningMessageVisibility = Visibility.Visible;
                     }
 
                 // invoke set full
                 if (fullSets == SetTargetAmount && !missingGearPieceForChaosRecipe)
                 {
-                    MainWindow.Overlay.WarningMessage = "Sets full!";
-                    MainWindow.Overlay.ShadowOpacity = 1;
-                    MainWindow.Overlay.WarningMessageVisibility = Visibility.Visible;
+                    MainOverlayBase.Instance.WarningMessage = "Sets full!";
+                    MainOverlayBase.Instance.ShadowOpacity = 1;
+                    MainOverlayBase.Instance.WarningMessageVisibility = Visibility.Visible;
                 }
 
                 Trace.WriteLine(fullSets, "full sets");
 
                 // If the state of any gear slot changed, we play a sound               
-                if (Settings.Default.Sound)
+                if (IoC.Get<ApplicationSettingService>().Sound)
                     if (!(PreviousActiveItems.GlovesActive == ActiveItems.GlovesActive
                           && PreviousActiveItems.BootsActive == ActiveItems.BootsActive
                           && PreviousActiveItems.HelmetActive == ActiveItems.HelmetActive
@@ -353,7 +357,7 @@ namespace EnhancePoE.UI.Model
                           && PreviousActiveItems.BeltActive == ActiveItems.BeltActive))
                         Player.Dispatcher.Invoke(() => { PlayNotificationSound(); });
             }
-            catch (OperationCanceledException ex) when (ex.CancellationToken == CancelationToken)
+            catch (OperationCanceledException ex) when (ex.CancellationToken == CancellationToken)
             {
                 Trace.WriteLine("abort");
             }
@@ -429,7 +433,7 @@ namespace EnhancePoE.UI.Model
                         }
                 }
 
-                if (Settings.Default.ShowItemAmount == 1)
+                if (IoC.Get<ApplicationSettingService>().MainOverlayItemAmountDisplayMode == 1)
                 {
                     Trace.WriteLine("we are here");
 
@@ -438,33 +442,33 @@ namespace EnhancePoE.UI.Model
                     foreach (var a in amounts) Trace.WriteLine(a);
 
                     amounts[4] = weaponsSmall + weaponBig;
-                    MainWindow.Overlay.RingsAmount = amounts[0];
-                    MainWindow.Overlay.AmuletsAmount = amounts[1];
-                    MainWindow.Overlay.BeltsAmount = amounts[2];
-                    MainWindow.Overlay.ChestsAmount = amounts[3];
-                    MainWindow.Overlay.WeaponsAmount = amounts[4];
-                    MainWindow.Overlay.GlovesAmount = amounts[5];
-                    MainWindow.Overlay.HelmetsAmount = amounts[6];
-                    MainWindow.Overlay.BootsAmount = amounts[7];
+                    MainOverlayBase.Instance.RingsAmount = amounts[0];
+                    MainOverlayBase.Instance.AmuletsAmount = amounts[1];
+                    MainOverlayBase.Instance.BeltsAmount = amounts[2];
+                    MainOverlayBase.Instance.ChestsAmount = amounts[3];
+                    MainOverlayBase.Instance.WeaponsAmount = amounts[4];
+                    MainOverlayBase.Instance.GlovesAmount = amounts[5];
+                    MainOverlayBase.Instance.HelmetsAmount = amounts[6];
+                    MainOverlayBase.Instance.BootsAmount = amounts[7];
                 }
-                else if (Settings.Default.ShowItemAmount == 2)
+                else if (IoC.Get<ApplicationSettingService>().MainOverlayItemAmountDisplayMode == 2)
                 {
                     amounts[4] = weaponsSmall + weaponBig;
-                    MainWindow.Overlay.RingsAmount = SetTargetAmount * 2 - amounts[0];
-                    MainWindow.Overlay.AmuletsAmount = SetTargetAmount - amounts[1];
-                    MainWindow.Overlay.BeltsAmount = SetTargetAmount - amounts[2];
-                    MainWindow.Overlay.ChestsAmount = SetTargetAmount - amounts[3];
-                    MainWindow.Overlay.WeaponsAmount = SetTargetAmount * 2 - (weaponsSmall + weaponBig * 2);
-                    MainWindow.Overlay.GlovesAmount = SetTargetAmount - amounts[5];
-                    MainWindow.Overlay.HelmetsAmount = SetTargetAmount - amounts[6];
-                    MainWindow.Overlay.BootsAmount = SetTargetAmount - amounts[7];
+                    MainOverlayBase.Instance.RingsAmount = SetTargetAmount * 2 - amounts[0];
+                    MainOverlayBase.Instance.AmuletsAmount = SetTargetAmount - amounts[1];
+                    MainOverlayBase.Instance.BeltsAmount = SetTargetAmount - amounts[2];
+                    MainOverlayBase.Instance.ChestsAmount = SetTargetAmount - amounts[3];
+                    MainOverlayBase.Instance.WeaponsAmount = SetTargetAmount * 2 - (weaponsSmall + weaponBig * 2);
+                    MainOverlayBase.Instance.GlovesAmount = SetTargetAmount - amounts[5];
+                    MainOverlayBase.Instance.HelmetsAmount = SetTargetAmount - amounts[6];
+                    MainOverlayBase.Instance.BootsAmount = SetTargetAmount - amounts[7];
                 }
             }
         }
 
         public static void PlayNotificationSound()
         {
-            var volume = Settings.Default.Volume / 100.0;
+            var volume = IoC.Get<ApplicationSettingService>().Volume / 100.0;
             Player.Volume = volume;
             Player.Position = TimeSpan.Zero;
             Player.Play();
@@ -472,7 +476,7 @@ namespace EnhancePoE.UI.Model
 
         public static void PlayNotificationSoundSetPicked()
         {
-            var volume = Settings.Default.Volume / 100.0;
+            var volume = IoC.Get<ApplicationSettingService>().Volume / 100.0;
             PlayerSet.Volume = volume;
             PlayerSet.Position = TimeSpan.Zero;
             PlayerSet.Play();
@@ -491,7 +495,7 @@ namespace EnhancePoE.UI.Model
         {
             if (active)
             {
-                if (Settings.Default.HighlightMode == 0)
+                if (IoC.Get<ApplicationSettingService>().StashOverlayHighlightMode == 0)
                 {
                     //activate cell by cell
                     foreach (var s in StashTabList.StashTabs)
@@ -523,8 +527,8 @@ namespace EnhancePoE.UI.Model
                             if (currentTab != null)
                             {
                                 currentTab.ActivateItemCells(highlightItem);
-                                if (Settings.Default.ColorStash != "")
-                                    currentTab.TabHeaderColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(Settings.Default.ColorStash));
+                                if (IoC.Get<ApplicationSettingService>().ColorStash != "")
+                                    currentTab.TabHeaderColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(IoC.Get<ApplicationSettingService>().ColorStash));
                                 else
                                     currentTab.TabHeaderColor = Brushes.Red;
 
@@ -536,7 +540,7 @@ namespace EnhancePoE.UI.Model
                             //}
                         }
                 }
-                else if (Settings.Default.HighlightMode == 1)
+                else if (IoC.Get<ApplicationSettingService>().StashOverlayHighlightMode == 1)
                 {
                     // activate whole set 
                     if (ItemSetListHighlight.Count > 0)
@@ -566,8 +570,8 @@ namespace EnhancePoE.UI.Model
                                 var currTab = GetStashTabFromItem(i);
                                 currTab.ActivateItemCells(i);
                                 //currTab.ShowNumbersOnActiveCells();
-                                if (Settings.Default.ColorStash != "")
-                                    currTab.TabHeaderColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(Settings.Default.ColorStash));
+                                if (IoC.Get<ApplicationSettingService>().ColorStash != "")
+                                    currTab.TabHeaderColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(IoC.Get<ApplicationSettingService>().ColorStash));
                                 else
                                     currTab.TabHeaderColor = Brushes.Red;
                             }
@@ -591,7 +595,7 @@ namespace EnhancePoE.UI.Model
                         }
                     }
                 }
-                else if (Settings.Default.HighlightMode == 2)
+                else if (IoC.Get<ApplicationSettingService>().StashOverlayHighlightMode == 2)
                 {
                     //activate all cells at once
                     if (ItemSetListHighlight.Count > 0)
@@ -627,7 +631,7 @@ namespace EnhancePoE.UI.Model
                 itemSet.OrderItems();
             //GlobalItemOrderList.AddRange(itemSet.ItemList);
 
-            if (Settings.Default.ExaltedRecipe)
+            if (IoC.Get<ApplicationSettingService>().ExaltRecipe)
             {
                 ItemSetShaper.OrderItems();
                 ItemSetElder.OrderItems();
@@ -680,7 +684,7 @@ namespace EnhancePoE.UI.Model
 
             //ItemSetListHighlight = new List<ItemSet>(ItemSetList);
             foreach (var set in ItemSetList)
-                if (set.SetCanProduceChaos || Settings.Default.RegalRecipe)
+                if (set.SetCanProduceChaos || IoC.Get<ApplicationSettingService>().RegalRecipe)
                     ItemSetListHighlight.Add(new ItemSet
                     {
                         ItemList = new List<Item>(set.ItemList),

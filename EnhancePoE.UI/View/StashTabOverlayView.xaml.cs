@@ -7,10 +7,10 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using Caliburn.Micro;
 using EnhancePoE.App;
+using EnhancePoE.App.Services;
 using EnhancePoE.UI.Model;
-using EnhancePoE.UI.Properties;
-using EnhancePoE.UI.UserControls;
 
 namespace EnhancePoE.UI.View
 {
@@ -19,18 +19,37 @@ namespace EnhancePoE.UI.View
     /// </summary>
     public partial class StashTabOverlayView : INotifyPropertyChanged
     {
+        // I don't know what i'm doing here
+        private static StashTabOverlayView _instance = new StashTabOverlayView();
+        public static StashTabOverlayView Instance => _instance;
+        
         private static readonly ObservableCollection<TabItem> OverlayStashTabList = new ObservableCollection<TabItem>();
         private Visibility _stashBorderVisibility = Visibility.Hidden;
         private Thickness _tabHeaderGap;
         private Thickness _tabMargin;
 
+        private double _leftStashTabOverlay;
+        private double _topStashTabOverlay;
+        private double _yStashTabOverlay;
+        private double _xStashTabOverlay;
+        private float _opacityStashTab;
+        private string _stashTabBackgroundColor;
+        
         public StashTabOverlayView()
         {
             InitializeComponent();
-            DataContext = this;
             StashTabOverlayTabControl.ItemsSource = OverlayStashTabList;
+
+            _leftStashTabOverlay = IoC.Get<ApplicationSettingService>().LeftStashTabOverlay;
+            _topStashTabOverlay = IoC.Get<ApplicationSettingService>().TopStashTabOverlay;
+            _yStashTabOverlay = IoC.Get<ApplicationSettingService>().YStashTabOverlay;
+            _xStashTabOverlay = IoC.Get<ApplicationSettingService>().XStashTabOverlay;
+            _opacityStashTab = IoC.Get<ApplicationSettingService>().OpacityStashTab;
+            _stashTabBackgroundColor = IoC.Get<ApplicationSettingService>().StashTabOverlayBackgroundColor;
         }
 
+        #region Properties
+        
         public bool IsOpen { get; set; }
         private bool IsEditing { get; set; }
 
@@ -60,7 +79,7 @@ namespace EnhancePoE.UI.View
             }
         }
 
-        private Visibility StashBorderVisibility
+        public Visibility StashBorderVisibility
         {
             get => _stashBorderVisibility;
             set
@@ -70,6 +89,44 @@ namespace EnhancePoE.UI.View
             }
         }
 
+        public double LeftStashTabOverlay
+        {
+            get => _leftStashTabOverlay;
+            set => _leftStashTabOverlay = value;
+        }
+
+        public double TopStashTabOverlay
+        {
+            get => _topStashTabOverlay;
+            set => _topStashTabOverlay = value;
+        }
+
+        public double YStashTabOverlay
+        {
+            get => _yStashTabOverlay;
+            set => _yStashTabOverlay = value;
+        }
+
+        public double XStashTabOverlay
+        {
+            get => _xStashTabOverlay;
+            set => _xStashTabOverlay = value;
+        }
+
+        public float OpacityStashTab
+        {
+            get => _opacityStashTab;
+            set => _opacityStashTab = value;
+        }
+
+        public string StashTabBackgroundColor
+        {
+            get => _stashTabBackgroundColor;
+            set => _stashTabBackgroundColor = value;
+        }
+        
+        #endregion
+        
         public new virtual void Hide()
         {
             Transparentize();
@@ -85,7 +142,7 @@ namespace EnhancePoE.UI.View
 
             IsOpen = false;
             IsEditing = false;
-            MainWindow.Overlay.OpenStashOverlayButtonContent = "Stash";
+            // MainWindow.Overlay.OpenStashOverlayButtonContent = "Stash";
 
             base.Hide();
         }
@@ -97,9 +154,9 @@ namespace EnhancePoE.UI.View
             {
                 IsOpen = true;
                 OverlayStashTabList.Clear();
-                _tabHeaderGap.Right = Settings.Default.TabHeaderGap;
-                _tabHeaderGap.Left = Settings.Default.TabHeaderGap;
-                TabMargin = new Thickness(Settings.Default.TabMargin, 0, 0, 0);
+                _tabHeaderGap.Right = IoC.Get<ApplicationSettingService>().TabHeaderGap;
+                _tabHeaderGap.Left = IoC.Get<ApplicationSettingService>().TabHeaderGap;
+                TabMargin = new Thickness(IoC.Get<ApplicationSettingService>().TabMargin, 0, 0, 0);
 
                 foreach (var i in StashTabList.StashTabs)
                 {
@@ -119,7 +176,7 @@ namespace EnhancePoE.UI.View
                         newStashTabItem = new TabItem
                         {
                             Header = tbk,
-                            Content = new DynamicGridControlQuad
+                            Content = new DynamicGridControlQuadView()
                             {
                                 ItemsSource = i.OverlayCellsList
                             }
@@ -128,7 +185,7 @@ namespace EnhancePoE.UI.View
                         newStashTabItem = new TabItem
                         {
                             Header = tbk,
-                            Content = new DynamicGridControl
+                            Content = new DynamicGridControlView
                             {
                                 ItemsSource = i.OverlayCellsList
                             }
@@ -141,22 +198,23 @@ namespace EnhancePoE.UI.View
 
                 Data.PrepareSelling();
                 Data.ActivateNextCell(true, null);
-                if (Settings.Default.HighlightMode == 2)
+                if (IoC.Get<ApplicationSettingService>().StashOverlayHighlightMode == 2)
                     foreach (var set in Data.ItemSetListHighlight)
-                        foreach (var i in set.ItemList)
-                        {
-                            var currTab = Data.GetStashTabFromItem(i);
-                            currTab.ActivateItemCells(i);
-                        }
+                    foreach (var i in set.ItemList)
+                    {
+                        var currTab = Data.GetStashTabFromItem(i);
+                        currTab.ActivateItemCells(i);
+                    }
 
-                MainWindow.Overlay.OpenStashOverlayButtonContent = "Hide";
+                // MainWindow.Overlay.OpenStashOverlayButtonContent = "Hide";
 
                 MouseHook.Start();
                 base.Show();
             }
             else
             {
-                MessageBox.Show("No StashTabs Available! Fetch before opening Overlay.", "Stashtab Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("No StashTabs Available! Fetch before opening Overlay.", "Stashtab Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -216,7 +274,7 @@ namespace EnhancePoE.UI.View
 
         public void HandleEditButton()
         {
-            if (MainWindow.StashTabOverlay.IsEditing)
+            if (StashTabOverlayView.Instance.IsEditing)
                 StopEditMode();
             else
                 StartEditMode();

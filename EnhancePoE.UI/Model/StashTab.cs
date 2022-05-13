@@ -5,6 +5,8 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
 using EnhancePoE.UI.Properties;
 
 //using System.Windows.Input;
@@ -23,7 +25,7 @@ namespace EnhancePoE.UI.Model
             TabName = name;
             TabIndex = index;
             TabHeaderColor = Brushes.Transparent;
-            TabHeaderWidth = new Thickness(Settings.Default.TabHeaderWidth, 2, Settings.Default.TabHeaderWidth, 2);
+            TabHeaderWidth = new Thickness(IoC.Get<ApplicationSettingService>().TabHeaderWidth, 2, IoC.Get<ApplicationSettingService>().TabHeaderWidth, 2);
         }
 
         public Uri StashTabUri { get; set; }
@@ -100,7 +102,7 @@ namespace EnhancePoE.UI.Model
 
         public void CleanItemList()
         {
-            if (Settings.Default.ExaltedRecipe)
+            if (IoC.Get<ApplicationSettingService>().ExaltRecipe)
             {
                 ItemListShaper.Clear();
                 ItemListElder.Clear();
@@ -113,7 +115,7 @@ namespace EnhancePoE.UI.Model
             // for loop backwards for deleting from list 
             for (var i = ItemList.Count - 1; i > -1; i--)
             {
-                if (ItemList[i].identified && !Settings.Default.IncludeIdentified)
+                if (ItemList[i].identified && !IoC.Get<ApplicationSettingService>().IncludeIdentifiedItems)
                 {
                     ItemList.RemoveAt(i);
                     continue;
@@ -134,7 +136,7 @@ namespace EnhancePoE.UI.Model
 
                 ItemList[i].StashTabIndex = TabIndex;
                 //exalted recipe every ilvl allowed, same bases, sort in itemlists
-                if (Settings.Default.ExaltedRecipe)
+                if (IoC.Get<ApplicationSettingService>().ExaltRecipe)
                     if (ItemList[i].influences != null)
                     {
                         if (ItemList[i].influences.shaper)
@@ -153,7 +155,7 @@ namespace EnhancePoE.UI.Model
                         continue;
                     }
 
-                if (!Settings.Default.ChaosRecipe && !Settings.Default.RegalRecipe)
+                if (!IoC.Get<ApplicationSettingService>().ChaosRecipe && !IoC.Get<ApplicationSettingService>().RegalRecipe)
                 {
                     ItemList.RemoveAt(i);
                     continue;
@@ -165,7 +167,7 @@ namespace EnhancePoE.UI.Model
                     continue;
                 }
 
-                if (Settings.Default.RegalRecipe && ItemList[i].ilvl < 75)
+                if (IoC.Get<ApplicationSettingService>().RegalRecipe && ItemList[i].ilvl < 75)
                 {
                     ItemList.RemoveAt(i);
                     continue;

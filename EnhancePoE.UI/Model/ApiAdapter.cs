@@ -8,6 +8,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
 using EnhancePoE.DataModels.GGGModels;
 using EnhancePoE.UI.Properties;
 
@@ -26,10 +28,10 @@ namespace EnhancePoE.UI.Model
             FetchingDone = false;
             Trace.WriteLine("generating uris!!");
 
-            if (Settings.Default.accName != "" && Settings.Default.League != "")
+            if (IoC.Get<ApplicationSettingService>().AccountName != "" && IoC.Get<ApplicationSettingService>().CurrentLeague != "")
             {
-                var accName = Settings.Default.accName.Trim();
-                var league = Settings.Default.League.Trim();
+                var accName = IoC.Get<ApplicationSettingService>().AccountName.Trim();
+                var league = IoC.Get<ApplicationSettingService>().CurrentLeague.Trim();
 
                 if (await GetProps(accName, league))
                     if (!FetchError)
@@ -70,13 +72,13 @@ namespace EnhancePoE.UI.Model
         {
             var ret = new List<StashTab>();
 
-            if (Settings.Default.StashTabIndices != null)
+            if (IoC.Get<ApplicationSettingService>().StashTabQueryIndices != null)
             {
                 StashTabList.GetStashTabIndices();
             }
 
             // mode = ID
-            if (Settings.Default.StashTabMode == 0)
+            if (IoC.Get<ApplicationSettingService>().StashTabQueryMode == 0)
             {
                 if (PropsList != null)
                 {
@@ -107,14 +109,14 @@ namespace EnhancePoE.UI.Model
             {
                 if (PropsList != null)
                 {
-                    var stashName = Settings.Default.StashTabName;
+                    var stashName = IoC.Get<ApplicationSettingService>().StashTabQueryString;
 
                     GetAllTabNames();
 
                     foreach (var tab in PropsList.tabs)
                     {
-                        if ((Settings.Default.StashTabMode == 1 && tab.Name.StartsWith(stashName))
-                            || (Settings.Default.StashTabMode == 2 && tab.Name.EndsWith(stashName)))
+                        if ((IoC.Get<ApplicationSettingService>().StashTabQueryMode == 1 && tab.Name.StartsWith(stashName))
+                            || (IoC.Get<ApplicationSettingService>().StashTabQueryMode == 2 && tab.Name.EndsWith(stashName)))
                         {
                             if (tab.Type == "PremiumStash" || tab.Type == "QuadStash" || tab.Type == "NormalStash")
                                 ret.Add(new StashTab(tab.Name, tab.Index));
@@ -157,7 +159,7 @@ namespace EnhancePoE.UI.Model
         {
             if (IsFetching) return false;
 
-            if (Settings.Default.SessionId == "")
+            if (IoC.Get<ApplicationSettingService>().SessionId == "")
             {
                 MessageBox.Show("Missing Settings!" + Environment.NewLine + "Please set PoE Session Id.");
                 return false;
@@ -176,7 +178,7 @@ namespace EnhancePoE.UI.Model
             IsFetching = true;
             var propsUri = new Uri($"https://www.pathofexile.com/character-window/get-stash-items?accountName={accName}&tabs=1&league={league}");
 
-            var sessionId = Settings.Default.SessionId;
+            var sessionId = IoC.Get<ApplicationSettingService>().SessionId;
 
             var cC = new CookieContainer();
             cC.Add(propsUri, new Cookie("POESESSID", sessionId));
@@ -229,7 +231,7 @@ namespace EnhancePoE.UI.Model
                 return false;
             }
 
-            if (Settings.Default.SessionId == "")
+            if (IoC.Get<ApplicationSettingService>().SessionId == "")
             {
                 MessageBox.Show("Missing Settings!" + Environment.NewLine + "Please set PoE Session Id.");
                 return false;
@@ -248,7 +250,7 @@ namespace EnhancePoE.UI.Model
             IsFetching = true;
             var usedUris = new List<Uri>();
 
-            var sessionId = Settings.Default.SessionId;
+            var sessionId = IoC.Get<ApplicationSettingService>().SessionId;
 
             var cookieContainer = new CookieContainer();
             using (var handler = new HttpClientHandler { CookieContainer = cookieContainer })

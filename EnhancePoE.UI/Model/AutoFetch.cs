@@ -4,6 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
+using EnhancePoE.App.Services;
+using EnhancePoE.UI.ViewModels;
 
 namespace EnhancePoE.UI.Model
 {
@@ -24,12 +27,12 @@ namespace EnhancePoE.UI.Model
             Trace.WriteLine("logwatcher created");
 
             var wh = new AutoResetEvent(false);
-            var fsw = new FileSystemWatcher(Path.GetDirectoryName(@"" + Settings.Default.LogLocation));
+            var fsw = new FileSystemWatcher(Path.GetDirectoryName(@"" + IoC.Get<ApplicationSettingService>().GGGClientLogFileLocation));
             fsw.Filter = "Client.txt";
             fsw.EnableRaisingEvents = true;
             fsw.Changed += (s, e) => wh.Set();
 
-            var fs = new FileStream(Settings.Default.LogLocation, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var fs = new FileStream(IoC.Get<ApplicationSettingService>().GGGClientLogFileLocation, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             fs.Position = fs.Length;
             WorkerThread = new Thread(() =>
             {
@@ -76,7 +79,7 @@ namespace EnhancePoE.UI.Model
         {
             var ret = new string[2];
             ret[1] = "";
-            switch (Settings.Default.Language)
+            switch (IoC.Get<ApplicationSettingService>().Language)
             {
                 //english
                 case 0:
@@ -114,7 +117,7 @@ namespace EnhancePoE.UI.Model
 
         public static string GetHideoutTranslation()
         {
-            switch (Settings.Default.Language)
+            switch (IoC.Get<ApplicationSettingService>().Language)
             {
                 case 0:
                     return "Hideout";
@@ -137,7 +140,7 @@ namespace EnhancePoE.UI.Model
 
         public static string GetHarbourTranslation()
         {
-            switch (Settings.Default.Language)
+            switch (IoC.Get<ApplicationSettingService>().Language)
             {
                 case 0:
                     return "The Rogue Harbour";
@@ -177,7 +180,7 @@ namespace EnhancePoE.UI.Model
                 FetchAllowed = false;
                 try
                 {
-                    MainWindow.Overlay.RunFetching();
+                    MainOverlayBase.Instance.RunFetching();
                     await Task.Delay(cooldown * 1000).ContinueWith(_ =>
                     {
                         FetchAllowed = true;
